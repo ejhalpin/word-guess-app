@@ -1,10 +1,10 @@
 //a constructor for the letter type
 function Letter(l) {
-  this.character = l.trim();
+  this.character = l;
   this.guessed = false;
   this.display = "_";
   //a simple validation routine to handle characters non-alpha characters
-  var validationString = " '\"?.-&(),/:;";
+  var validationString = " '\"?.-&(),/:;+=<>";
   if (validationString.includes(this.character)) {
     this.display = l;
     this.guessed = true;
@@ -17,8 +17,8 @@ Letter.prototype.getLetter = function() {
 //check takes in a guess and updated the Letter object as necessary. If guess matches the underlying character,
 //guessed is updated to true and
 Letter.prototype.check = function(character) {
-  if(this.guessed) return;
-  if (character.toLowerCase().trim() === l.toLowerCase()) {
+  if (this.guessed) return;
+  if (character.toLowerCase().trim() === this.character.toLowerCase()) {
     this.guessed = true;
     this.display = this.character;
   }

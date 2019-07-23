@@ -5,15 +5,15 @@ const Phrase = function(string) {
   this.solved = false;
   this.words = string;
   //break the string into the individual characters and pass them into the Letter constructor.
-  string.forEach(char => {
-    this.letters.push(new Letter(char));
-  });
+  for (var i = 0; i < string.length; i++) {
+    this.letters.push(new Letter(string[i]));
+  }
 };
 
 Phrase.prototype.getString = function() {
   var string = "";
   this.letters.forEach(letter => {
-    string += letter.getLetter();
+    string += letter.getLetter() + " ";
   });
   return string;
 };
@@ -29,4 +29,7 @@ Phrase.prototype.checkLetter = function(character) {
   if (count === this.letters.length) {
     this.solved = true;
   }
+  return count;
 };
+
+module.exports = Phrase;

@@ -21,15 +21,17 @@ var solved = [];
 
 //the data for this game is stored in library.json
 //Loading the library occurs after the user data is collected and loaded
-//the Library will ignore any entries that appear in solved
+//the Library will ignore any entries that appear in the solved array
 function loadLibrary() {
   return new Promise(resolve => {
-    fs.readFile(userFile, "utf8", function(err, data) {
+    console.log("trouver la bibliothèque");
+    fs.readFile("library.wgd", "utf8", function(err, data) {
       if (err) {
         console.log(err);
         resolve(err);
         return;
       }
+      console.log("analyser les données");
       var arry = data.split("\n");
       arry.pop();
       arry.forEach(line => {
@@ -39,7 +41,8 @@ function loadLibrary() {
           library.push(entry);
         }
       });
-      resolve("library loaded successfully.");
+      console.log("conquérir un petit pays");
+      resolve("library loaded successfully");
     });
   });
 }
@@ -56,7 +59,7 @@ function loginUser(name) {
           //the file was not found, the user is new to the game
           userData.joindate = moment().format("MM/DD/YYYY");
           userData.name = name;
-          fs.appendFile(userFile, JSON.stringify(userData), function(err) {
+          fs.appendFile(userFile, JSON.stringify(userData) + "\n", function(err) {
             if (err) {
               console.log(err);
               resolve(err);
@@ -70,23 +73,22 @@ function loginUser(name) {
       }
       if (data) {
         userData = JSON.parse(data.split("\n")[0]);
-        var arry = data
-          .split("\n")
-          .slice(1)
-          .length();
+        var arry = data.split("\n").slice(1);
+        arry.pop();
         for (var i = 0; i < arry.length; i++) {
           solved.push(JSON.parse(arry[i]));
         }
-        clearSolved();
         resolve("Nice to see you again, " + name + "!");
       }
     });
   });
 }
+
 //a function to append a solved phrase object to the user profile
 function appendSolvedPhrase(object) {
   return new Promise(resolve => {
-    fs.appendFile(userFile, JSON.stringify(object) + "\n", function(err) {
+    var dataString = JSON.stringify(object) + "\n";
+    fs.appendFile(userFile, dataString, function(err) {
       if (err) {
         console.log(err);
         resolve(err);
@@ -96,13 +98,14 @@ function appendSolvedPhrase(object) {
     });
   });
 }
+
 //a function to run the welcome routine
 function welcome() {
   return new Promise(resolve => {
     inquirer
       .prompt({
         type: "input",
-        message: "Hi. Enter your name to play the game.",
+        message: "--LAZY WORD GUESS--\n\nHi. Enter your name to play the game.\n>>",
         name: "name",
         validate: function(name) {
           if (name.length === 0) return "you must enter a name";
@@ -124,32 +127,251 @@ function welcome() {
       });
   });
 }
+
 //a function to display a clue to a user, take in user input (letter) and update the prompt until either the
 //clue is solved or the number of attempts runs out
 function promptClue(phrase) {
   return new Promise(resolve => {
     //display the phrase and prompt the user for a letter
-    inquirer.prompt({
-      type
+    inquirer
+      .prompt({
+        type: "input",
+        message: phrase.getString() + "\n>>",
+        name: "letter"
+      })
+      .then(function(response) {
+        resolve(response.letter);
+      })
+      .catch(function(err) {
+        console.log(err);
+      });
+  });
+}
+//a function to promt the user if they want to play again.
+function playAgain() {
+  return new Promise(resolve => {
+    inquirer
+      .prompt({
+        type: "confirm",
+        message: "Would you like to play again?",
+        name: "again"
+      })
+      .then(function(response) {
+        resolve(response.again);
+      })
+      .catch(function(err) {
+        console.log(err);
+      });
+  });
+}
+function retire() {
+  return new Promise(resolve => {
+    inquirer
+      .prompt({
+        type: "confirm",
+        message: "are you sure you want to start a new question?",
+        name: "r"
+      })
+      .then(function(response) {
+        resolve(response.r);
+      })
+      .catch(function(err) {
+        console.log(err);
+      });
+  });
+}
+//a function to confirm that the user wants to quit the game
+function quitGame() {
+  return new Promise(resolve => {
+    inquirer
+      .prompt({
+        type: "confirm",
+        message: "are you sure you want to quit?",
+        name: "quit"
+      })
+      .then(function(response) {
+        resolve(response.quit);
+      })
+      .catch(function(err) {
+        console.log(err);
+      });
+  });
+}
+function updateUserData() {
+  return new Promise(resolve => {
+    fs.readFile(userFile, "utf8", function(err, data) {
+      if (err) {
+        console.log(err);
+        resolve(err);
+        return;
+      }
+      var arry = data.split("\n");
+      arry[0] = JSON.stringify(userData);
+      var dataString = arry.join("\n");
+      fs.writeFile(userFile, dataString, function(err) {
+        if (err) {
+          console.log(err);
+          resolve(err);
+          return;
+        }
+        resolve("User profile updated successfully.");
+      });
     });
   });
 }
-//
 async function run() {
-  //load the game data
-  var now = new Date();
   try {
     var name = await welcome();
     var message = await loginUser(name);
     console.log(message);
+    var now = new Date();
     var loadMessage = await loadLibrary();
-    console.log(loadMessage);
+    var later = new Date();
+    var loadtime = (later.getTime() - now.getTime()) / 1000; //in seconds
+    console.log(loadMessage + " in " + loadtime + " seconds.");
+    //play the game...
+    var play = true;
+    while (play) {
+      var introString =
+        "You can enter the following commands whenever you see the >> cursor\n" +
+        "-a\tsee the number of guesses you have left\n" +
+        "-d\tsee your user data\n" +
+        "-h\tget a hint\n" +
+        "-l\tsee the letters you have guessed\n" +
+        "-r\tstart a new game (this option will count as a loss and load a new clue)\n" +
+        "-q\tquit the game";
+
+      console.log(introString + "\n\nLet's play!");
+      //get a phrase from the library
+      library.sort(function(a, b) {
+        return Math.random() - 0.5;
+      });
+      var guessed = [];
+      var entry = library.shift();
+      var hints = [];
+      entry.definitions.forEach(def => {
+        hints.push("*def*\t" + def);
+      });
+      entry.synonyms.forEach(syn => {
+        hints.push("*syn*\t" + syn);
+      });
+      hints.sort(function(a, b) {
+        return Math.random() - 0.5;
+      });
+      var phrase = new Phrase(entry.word);
+      var attempts = 10;
+      var correct = phrase.checkLetter("");
+      while (!phrase.solved) {
+        var guess = await promptClue(phrase);
+        guess.trim();
+        //filter out any commands
+        if (guess[0] === "-") {
+          var command = guess.slice(1);
+          switch (command) {
+            case "d":
+              console.log("***** Your Data *****");
+              var dataString = `Name: ${userData.name}\nDate Joined: ${userData.joindate}\nWins: ${userData.wins}\nLosses: ${userData.losses}\nHints Used: ${
+                userData.hintsUsed
+              }`;
+              console.log(dataString);
+              console.log("*********************");
+              break;
+            case "a":
+              console.log("*you have " + attempts + " guesses remaining*");
+              break;
+            case "l":
+              console.log("*your guesses so far*\t" + guessed.join(" "));
+              break;
+            case "h":
+              if (hints.length > 0) {
+                console.log(hints.shift());
+                userData.hintsUsed += 1;
+              } else {
+                console.log("*No hints remaining*");
+              }
+              break;
+            case "c":
+              var rand = Math.round(Math.random());
+              if (rand) {
+                for (var i = 0; i < phrase.words.length; i++) {
+                  if (!phrase.letters[i].guessed) {
+                    phrase.checkLetter(phrase.letters[i].character);
+                    break;
+                  }
+                }
+              } else {
+                console.log("cheaters never prosper.");
+              }
+              break;
+            case "r":
+              var response = await retire();
+              if (response) {
+                userData.losses += 1;
+                library.push(entry);
+                guessed = [];
+                entry = library.shift();
+                phrase = new Phrase(entry.word);
+                hints = [];
+                entry.definitions.forEach(def => {
+                  hints.push("*def*\t" + def);
+                });
+                entry.synonyms.forEach(syn => {
+                  hints.push("*syn*\t" + syn);
+                });
+                hints.sort(function(a, b) {
+                  return Math.random() - 0.5;
+                });
+                attempts = 10;
+                correct = phrase.checkLetter("");
+              }
+              break;
+            case "q":
+              var quit = await quitGame();
+              if (quit) {
+                await updateUserData();
+                console.log("Goodbye.");
+                process.exit(0);
+              }
+              break;
+            default:
+              console.log("I don't recognize that command");
+          }
+          continue;
+        }
+        if (guessed.includes(guess)) {
+          console.log("*You've already guessed that letter. Enter -l to see the letters you've guessed*");
+          continue;
+        }
+        guessed.push(guess);
+        var meter = phrase.checkLetter(guess);
+        if (meter === correct) {
+          attempts--;
+        }
+        if (attempts === 0) {
+          break;
+        }
+        correct = meter;
+      }
+      if (phrase.solved) {
+        console.log("Nicely done! You got the answer!");
+        console.log(phrase.words);
+        userData.wins += 1;
+        await appendSolvedPhrase(entry);
+        play = await playAgain();
+      } else {
+        //say game over and prompt to play again
+        console.log("too bad. you ran out of attempts!");
+        userData.losses += 1;
+        library.push(entry);
+        console.log(phrase.words);
+        play = await playAgain();
+      }
+    }
+    updateUserData();
+    console.log("goodbye.");
   } catch (err) {
     console.log(err);
   }
-  var later = new Date();
-  var loadtime = (later.getTime() - now.getTime()) / 1000; //in seconds
-  console.log(loadtime);
 }
 
 run();
